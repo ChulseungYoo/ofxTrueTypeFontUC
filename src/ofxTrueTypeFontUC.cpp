@@ -41,7 +41,6 @@
 
 //===========================================================
 #ifdef TARGET_WIN32
-
 static const basic_string<unsigned int> convToUTF32(const wstring &src) {
 	if (src.size() == 0) {
 		return basic_string<unsigned int>();
@@ -56,7 +55,6 @@ static const basic_string<unsigned int> convToUTF32(const wstring &src) {
 	std::wstring_convert<std::codecvt_utf8<unsigned int>, unsigned int> convert32;
 	return convert32.from_bytes(&buffUTF8[0]);
 }
-
 #else
 #endif
 
