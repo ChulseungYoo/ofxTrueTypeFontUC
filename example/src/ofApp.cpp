@@ -4,7 +4,7 @@
 void ofApp::setup(){
   myFont.loadFont("NotoSans-Regular.ttf", 64, true, true);
   
-  sampleString.append("hello world", 10);
+  sampleString.append("hello world", 11);
   
   p1 = ofPoint(100, 200);
   p2 = ofPoint(200, 300);
