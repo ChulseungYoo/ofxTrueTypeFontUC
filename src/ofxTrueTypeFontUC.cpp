@@ -913,7 +913,6 @@ ofRectangle ofxTrueTypeFontUC::getStringBoundingBox(const string &src, float x, 
   
   bool bFirstCharacter = true;
   int c, cy;
-    
   while (index < len)
   {
       c = utf32_src[index];
@@ -974,12 +973,13 @@ ofRectangle ofxTrueTypeFontUC::getStringBoundingBox(const string &src, float x, 
 ofRectangle ofxTrueTypeFontUC::getStringBoundingBox(const wstring &src, float x, float y){
   ofRectangle myRect;
   
+  wstring arabicProcessedSrc = getArabicContextureFontIndexes(src);
   if (!mImpl->bLoadedOk_) {
     ofLog(OF_LOG_ERROR,"ofxTrueTypeFontUC::getStringBoundingBox - font not allocated");
     return myRect;
   }
   
-  basic_string<unsigned int> utf32_src = convToUTF32(src);
+  basic_string<unsigned int> utf32_src = convToUTF32(arabicProcessedSrc);
   int len = (int)utf32_src.length();
   
   GLint index = 0;
@@ -1010,7 +1010,10 @@ ofRectangle ofxTrueTypeFontUC::getStringBoundingBox(const wstring &src, float x,
       }
       else if (c == ' ') {
           cy = mImpl->getCharID('p');
-          xoffset += mImpl->cps[cy].width * mImpl->letterSpacing_ * mImpl->spaceSize_;
+          if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
+              mImpl->loadChar(cy);
+
+          xoffset += mImpl->cps[cy].setWidth * mImpl->letterSpacing_ * mImpl->spaceSize_;
           // zach - this is a bug to fix -- for now, we don't currently deal with ' ' in calculating string bounding box
       }
       else {
@@ -1082,27 +1085,54 @@ void ofxTrueTypeFontUC::drawString(const string &src, float x, float y){
   basic_string<unsigned int> utf32_src = convToUTF32(src);
   int len = (int)utf32_src.length();
   int c, cy;
-    
-  while (index < len) {
-      c = utf32_src[index];
-      if (c == '\n') {
-          Y += mImpl->lineHeight_;
-          X = x ; //reset X Pos back to zero
+  if (isRTL)
+  {
+      while (index < len) {
+          c = utf32_src[index];
+          if (c == '\n') {
+              Y += mImpl->lineHeight_;
+              X = x; //reset X Pos back to zero
+          }
+          else if (c == ' ') {
+              int cy = mImpl->getCharID('p');
+              X += mImpl->cps[cy].width * mImpl->letterSpacing_ * mImpl->spaceSize_;
+          }
+          else {
+              cy = mImpl->getCharID(c);
+              if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
+                  mImpl->loadChar(cy);
+              mImpl->bind(cy);
+              mImpl->drawChar(cy, X, Y);
+              mImpl->unbind(cy);
+              X += mImpl->cps[cy].setWidth * mImpl->letterSpacing_;
+          }
+          index++;
       }
-      else if (c == ' ') {
-          int cy = mImpl->getCharID('p');
-          X += mImpl->cps[cy].width * mImpl->letterSpacing_ * mImpl->spaceSize_;
+  }
+  else 
+  {
+      index = len - 1;
+      while (index >= 0) {
+          c = utf32_src[index];
+          if (c == '\n') {
+              Y += mImpl->lineHeight_;
+              X = x; //reset X Pos back to zero
+          }
+          else if (c == ' ') {
+              int cy = mImpl->getCharID('p');
+              X -= mImpl->cps[cy].width * mImpl->letterSpacing_ * mImpl->spaceSize_;
+          }
+          else {
+              cy = mImpl->getCharID(c);
+              if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
+                  mImpl->loadChar(cy);
+              mImpl->bind(cy);
+              mImpl->drawChar(cy, X - mImpl->cps[cy].width, Y);
+              mImpl->unbind(cy);
+              X -= mImpl->cps[cy].setWidth * mImpl->letterSpacing_;
+          }
+          index--;
       }
-      else {
-          cy = mImpl->getCharID(c);
-          if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
-              mImpl->loadChar(cy);
-          mImpl->bind(cy);
-          mImpl->drawChar(cy, X, Y);
-          mImpl->unbind(cy);
-          X += mImpl->cps[cy].setWidth * mImpl->letterSpacing_;
-      }
-    index++;
   }
 }
 
@@ -1124,30 +1154,222 @@ void ofxTrueTypeFontUC::drawString(const basic_string<unsigned int> &src, float 
 
 	int len = (int)src.length();
 	int c, cy;
-
-	while (index < len) {
-		c = src[index];
-		if (c == '\n') {
-			Y += mImpl->lineHeight_;
-			X = x; //reset X Pos back to zero
-		}
-		else if (c == ' ') {
-			int cy = mImpl->getCharID('p');
-			X += mImpl->cps[cy].width * mImpl->letterSpacing_ * mImpl->spaceSize_;
-		}
-		else {
-			cy = mImpl->getCharID(c);
-			if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
-				mImpl->loadChar(cy);
-			mImpl->bind(cy);
-			mImpl->drawChar(cy, X, Y);
-			mImpl->unbind(cy);
-			X += mImpl->cps[cy].setWidth * mImpl->letterSpacing_;
-		}
-		index++;
-	}
+    if (isRTL)
+    {
+        while (index < len) {
+            c = src[index];
+            if (c == '\n') {
+                Y += mImpl->lineHeight_;
+                X = x; //reset X Pos back to zero
+            }
+            else if (c == ' ') {
+                int cy = mImpl->getCharID('p');
+                X += mImpl->cps[cy].width * mImpl->letterSpacing_ * mImpl->spaceSize_;
+            }
+            else {
+                cy = mImpl->getCharID(c);
+                if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
+                    mImpl->loadChar(cy);
+                mImpl->bind(cy);
+                mImpl->drawChar(cy, X, Y);
+                mImpl->unbind(cy);
+                X += mImpl->cps[cy].setWidth * mImpl->letterSpacing_;
+            }
+            index++;
+        }
+    }
+    else
+    {
+        index = len - 1;
+        while (index >= 0) {
+            c = src[index];
+            if (c == '\n') {
+                Y += mImpl->lineHeight_;
+                X = x; //reset X Pos back to zero
+            }
+            else if (c == ' ') {
+                int cy = mImpl->getCharID('p');
+                X -= mImpl->cps[cy].width * mImpl->letterSpacing_ * mImpl->spaceSize_;
+            }
+            else {
+                cy = mImpl->getCharID(c);
+                if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
+                    mImpl->loadChar(cy);
+                mImpl->bind(cy);
+                mImpl->drawChar(cy, X - mImpl->cps[cy].width, Y);
+                mImpl->unbind(cy);
+                X -= mImpl->cps[cy].setWidth * mImpl->letterSpacing_;
+            }
+            index--;
+        }
+    }
 }
+wstring ofxTrueTypeFontUC::getArabicContextureFontIndexes(const wstring &src) {
+    wstring retVal = L"";
+    GLint index = 0;
+    int len = (int)src.length();
+    int c;
+    bool prevHasTail = false;
+    while (index < len) {
+        c = src[index];
+        //https://en.wikipedia.org/wiki/Arabic_script_in_Unicode
+        int contextureForm = 0;
+        //check if is isolated, or end, middle, beginning cha
+        if ((index == len - 1) || (src[index + 1] == ' ')) {
+            //is end
+            contextureForm = 1;
+        }
+        else if ((prevHasTail == false) || (index == 0) || ((index < len - 2) && ((src[index - 1] == ' ') || (src[index - 1] == 0x0649) || (src[index - 1] == 0x0629) || (src[index - 1] == 0x0622) || (src[index - 1] == 0x0648) || (src[index - 1] == 0x0632) || (src[index - 1] == 0x0631) || (src[index - 1] == 0x0630) || (src[index - 1] == 0x062F) || (src[index - 1] == 0x0627)))) {
+            //is beginning
+            contextureForm = 2;
+        }
+        else {
+            //is middle
+            contextureForm = 3;
+        }
+        switch (c)
+        {
+        case 0x0623:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFE83 + contextureForm;
+            break;
+        case 0x0627:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFE8D + contextureForm;
+            break;
+        case 0x0628:
+            c = 0xFE8F + contextureForm;
+            break;
+        case 0x062A:
+            c = 0xFE95 + contextureForm;
+            break;
+        case 0x062B:
+            c = 0xFE99 + contextureForm;
+            break;
+        case 0x062C:
+            c = 0xFE9D + contextureForm;
+            break;
+        case 0x062D:
+            c = 0xFEA1 + contextureForm;
+            break;
+        case 0x062E:
+            c = 0xFEA5 + contextureForm;
+            break;
+        case 0x062F:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFEA9 + contextureForm;
+            break;
+        case 0x0630:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFEAB + contextureForm;
+            break;
+        case 0x0631:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFEAD + contextureForm;
+            break;
+        case 0x0632:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFEAF + contextureForm;
+            break;
+        case 0x0633:
+            c = 0xFEB1 + contextureForm;
+            break;
+        case 0x0634:
+            c = 0xFEB5 + contextureForm;
+            break;
+        case 0x0635:
+            c = 0xFEB9 + contextureForm;
+            break;
+        case 0x0636:
+            c = 0xFEBD + contextureForm;
+            break;
+        case 0x0637:
+            c = 0xFEC1 + contextureForm;
+            break;
+        case 0x0638:
+            c = 0xFEC5 + contextureForm;
+            break;
+        case 0x0639:
+            c = 0xFEC9 + contextureForm;
+            break;
+        case 0x063A:
+            c = 0xFECD + contextureForm;
+            break;
+        case 0x0641:
+            c = 0xFED1 + contextureForm;
+            break;
+        case 0x0642:
+            c = 0xFED5 + contextureForm;
+            break;
+        case 0x0643:
+            c = 0xFED9 + contextureForm;
+            break;
+        case 0x0644:
+            c = 0xFEDD + contextureForm;
+            break;
+        case 0x0645:
+            c = 0xFEE1 + contextureForm;
+            break;
+        case 0x0646:
+            c = 0xFEE5 + contextureForm;
+            break;
+        case 0x0647:
+            c = 0xFEE9 + contextureForm;
+            break;
+        case 0x0648:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFEED + contextureForm;
+            break;
+        case 0x064A:
+            c = 0xFEF1 + contextureForm;
+            break;
+        case 0x0622:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFE81 + contextureForm;
+            break;
+        case 0x0629:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFE93 + contextureForm;
+            break;
+        case 0x0649:
+            if (contextureForm >= 2) {
+                contextureForm -= 2;
+            }
+            c = 0xFEEF + contextureForm;
+            break;
 
+        default:
+            break;
+        }
+        if (contextureForm >= 2) {
+            prevHasTail = true;
+        }
+        else {
+            prevHasTail = false;
+        }
+        retVal.push_back(c);
+        index++;
+    }
+    return retVal;
+}
 //=====================================================================
 void ofxTrueTypeFontUC::drawString(const wstring &src, float x, float y) {
 	if (!mImpl->bLoadedOk_) {
@@ -1162,27 +1384,59 @@ void ofxTrueTypeFontUC::drawString(const wstring &src, float x, float y) {
 	int len = (int)src.length();
 	int c, cy;
 
-	while (index < len) {
-		c = src[index];
-		if (c == '\n') {
-			Y += mImpl->lineHeight_;
-			X = x; //reset X Pos back to zero
-		}
-		else if (c == ' ') {
-			int cy = mImpl->getCharID('p');
-			X += mImpl->cps[cy].width * mImpl->letterSpacing_ * mImpl->spaceSize_;
-		}
-		else {
-			cy = mImpl->getCharID(c);
-			if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
-				mImpl->loadChar(cy);
-			mImpl->bind(cy);
-			mImpl->drawChar(cy, X, Y);
-			mImpl->unbind(cy);
-			X += mImpl->cps[cy].setWidth * mImpl->letterSpacing_;
-		}
-		index++;
+    if (isRTL)
+    {
+        while (index < len) {
+            c = src[index];
+            if (c == '\n') {
+                Y += mImpl->lineHeight_;
+                X = x; //reset X Pos back to zero
+            }
+            else if (c == ' ') {
+                int cy = mImpl->getCharID('p');
+                X += mImpl->cps[cy].width * mImpl->letterSpacing_ * mImpl->spaceSize_;
+            }
+            else {
+                cy = mImpl->getCharID(c);
+                if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
+                    mImpl->loadChar(cy);
+                mImpl->bind(cy);
+                mImpl->drawChar(cy, X, Y);
+                mImpl->unbind(cy);
+                X += mImpl->cps[cy].setWidth * mImpl->letterSpacing_;
+            }
+            index++;
+        }
 	}
+    else
+    {
+        wstring arabicUnicodeAppliedStr = getArabicContextureFontIndexes(src);
+        len = (int)arabicUnicodeAppliedStr.length();
+        while (index < len) {
+            c = arabicUnicodeAppliedStr[index];
+            if (c == '\n') {
+                Y += mImpl->lineHeight_;
+                X = x; //reset X Pos back to zero
+            }
+            else if (c == ' ') {
+                int cy = mImpl->getCharID(' ');
+                if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
+                    mImpl->loadChar(cy);
+                X -= mImpl->cps[cy].setWidth* mImpl->letterSpacing_ * mImpl->spaceSize_;
+            }
+            else {
+       
+                cy = mImpl->getCharID(c);
+                if (mImpl->cps[cy].character == mImpl->kTypefaceUnloaded)
+                    mImpl->loadChar(cy);
+                mImpl->bind(cy);
+                mImpl->drawChar(cy, X - mImpl->cps[cy].setWidth, Y);
+                mImpl->unbind(cy);
+                X -= mImpl->cps[cy].setWidth * mImpl->letterSpacing_;
+            }
+            index++;
+        }
+    }
 }
 //=====================================================================
 void ofxTrueTypeFontUC::drawStringCenter(const wstring &src, float x, float y) {

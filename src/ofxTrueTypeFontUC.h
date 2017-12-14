@@ -19,7 +19,7 @@ public:
   
   //set the default dpi for all typefaces.
   static void setGlobalDpi(int newDpi);
-  
+  bool isRTL = true;
   // 			-- default (without dpi), anti aliased, 96 dpi:
   bool load(string filename, int fontsize, bool bAntiAliased=true, bool makeContours=false, float simplifyAmt=0.3, int dpi=0);
   bool loadFont(string filename, int fontsize, bool bAntiAliased=true, bool makeContours=false, float simplifyAmt=0.3, int dpi=0);
@@ -29,12 +29,15 @@ public:
   void drawString(const string &str, float x, float y);
   void drawStringCenter(const string &str, float x, float y);
   void drawString(const wstring &str, float x, float y);
+  void drawString(const wstring & str, ofRectangle box);
   void drawStringOutline(const wstring &str, float x, float y);
   void drawStringCenter(const wstring &str, float x, float y);
   void drawStringCenter(const wstring &str, ofRectangle box);
   void drawString(const basic_string<unsigned int> &str, float x, float y);
   void drawStringAsShapes(const string &str, float x, float y);
   
+  wstring ofxTrueTypeFontUC::getArabicContextureFontIndexes(const wstring &src);
+
   vector<ofPath> getStringAsPoints(const string &str, bool vflip=ofIsVFlipped());
   ofRectangle getStringBoundingBox(const string &str, float x, float y);
   ofRectangle getStringBoundingBox(const wstring &str, float x, float y);
