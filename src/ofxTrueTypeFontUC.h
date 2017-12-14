@@ -36,6 +36,8 @@ public:
   void drawString(const basic_string<unsigned int> &str, float x, float y);
   void drawStringAsShapes(const string &str, float x, float y);
   
+  wstring ofxTrueTypeFontUC::getArabicContextureFontIndexes(const wstring &src);
+
   vector<ofPath> getStringAsPoints(const string &str, bool vflip=ofIsVFlipped());
   ofRectangle getStringBoundingBox(const string &str, float x, float y);
   ofRectangle getStringBoundingBox(const wstring &str, float x, float y);
