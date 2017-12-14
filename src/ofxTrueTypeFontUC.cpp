@@ -1442,20 +1442,31 @@ void ofxTrueTypeFontUC::drawString(const wstring &src, float x, float y) {
 void ofxTrueTypeFontUC::drawStringCenter(const wstring &src, float x, float y) {
 
 	ofRectangle boundingBox = getStringBoundingBox(src, x, y);
-	drawString(src, (int)(x - (boundingBox.getWidth() / 2)), (int)y);
+    if (isRTL) {
+	    drawString(src, (int)(x - (boundingBox.getWidth() / 2)), (int)y);
+    }
+    else {
+        drawString(src, (int)(x + (boundingBox.getWidth() / 2)), (int)y);
+    }
 }
 void ofxTrueTypeFontUC::drawStringCenter(const wstring &src, ofRectangle box) {
 
-	ofRectangle boundingBox = getStringBoundingBox(src, 0, 0);
+    wstring arabicProcessdStr = getArabicContextureFontIndexes(src);
+	ofRectangle boundingBox = getStringBoundingBox(arabicProcessdStr, 0, 0);
 	if (boundingBox.getWidth() < box.getWidth())
-	{
-		drawString(src, box.getLeft() + (box.getWidth() - boundingBox.getWidth()) / 2, box.getBottom() - (box.getHeight() - boundingBox.getHeight()) / 2);
+    {
+        if (isRTL) {
+		    drawString(arabicProcessdStr, box.getLeft() + (box.getWidth() - boundingBox.getWidth()) / 2, box.getBottom() - (box.getHeight() - boundingBox.getHeight()) / 2);
+        }
+        else {
+            drawString(arabicProcessdStr, box.getRight() - (box.getWidth() - boundingBox.getWidth()) / 2, box.getBottom() - (box.getHeight() - boundingBox.getHeight()) / 2);
+        }
 	}
 	else
 	{
 		//사각형 안에 들어올때까지 때까지 스페이스를 라인피드로, 스페이스 없으면 끝.
 
-		wstring tmp = src;
+		wstring tmp = arabicProcessdStr;
 		queue<wstring> spaceDelimitedStrings;
 		size_t lastSpaceIndex;
 		while(wstring::npos != (lastSpaceIndex = tmp.find(L' ')))
